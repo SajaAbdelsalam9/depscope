@@ -1,0 +1,5 @@
+# Sample project dependencies
+requests==2.19.0
+flask==2.0.1
+
+django>=3.2
