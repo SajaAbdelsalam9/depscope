@@ -1,4 +1,4 @@
-from depscope.models import Dependency
+from depscope.models import Dependency, ParseIssue
 
 
 def parse_line(line: str) -> Dependency | None:
@@ -30,3 +30,25 @@ def parse_line(line: str) -> Dependency | None:
         raise ValueError(f"Missing package name or version: {line.strip()}")
 
     return Dependency(name=name, version=version)
+
+
+def parse_file(path: str) -> tuple[list[Dependency], list[ParseIssue]]:
+    """Parse a requirements.txt file.
+
+    Returns the dependencies found and a list of lines that could not be used.
+    """
+    dependencies = []
+    issues = []
+
+    with open(path, encoding="utf-8") as file:
+        for line_number, line in enumerate(file, start=1):
+            try:
+                dependency = parse_line(line)
+            except ValueError as error:
+                issues.append(ParseIssue(line_number, line.strip(), str(error)))
+                continue
+
+            if dependency is not None:
+                dependencies.append(dependency)
+
+    return dependencies, issues
