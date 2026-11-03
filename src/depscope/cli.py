@@ -3,6 +3,7 @@ import sys
 
 from depscope.comparator import compare, package_key
 from depscope.parser import parse_file
+from depscope.prioritizer import print_priorities
 from depscope.remediation import print_recommendations
 from depscope.scanner import scan
 
@@ -30,6 +31,7 @@ def run_scan(path):
             print(f"  - {f.key} [{label}] fix: {fix}")
             print(f"    {f.summary}")
 
+    print_priorities(findings)
     print_recommendations(dependencies, findings)
     if issues:
         print("\nUnsupported lines (NOT analyzed):")
@@ -82,6 +84,8 @@ def run_compare(before_path, after_path):
     for finding in result.persistent_findings:
         print(f"  - {describe(finding)}")
 
+    current = [c.finding for c in result.new_findings] + list(result.persistent_findings)
+    print_priorities(current, {c.finding for c in result.new_findings})
     print(
         f"\nTotals for reference only (before: {len(before_findings)}, "
         f"after: {len(after_findings)}). The lists above are what changed."

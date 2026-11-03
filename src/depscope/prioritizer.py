@@ -55,3 +55,18 @@ def prioritize_all(findings, new_keys=frozenset()) -> list[Priority]:
     """Rank findings, highest score first, ties broken by finding key."""
     ranked = [prioritize(f, is_new=f.key in new_keys) for f in findings]
     return sorted(ranked, key=lambda p: (-p.score, p.finding.key))
+
+
+def print_priorities(findings, new_findings=frozenset()) -> None:
+    if not findings:
+        return
+
+    ranked = [prioritize(f, is_new=f in new_findings) for f in findings]
+    ranked.sort(key=lambda p: (-p.score, p.finding.dependency.name, p.finding.key))
+
+    print("\nPRIORITY ORDER (DepScope's own ranking: not CVSS, not an industry standard)")
+    for p in ranked:
+        f = p.finding
+        label = f.advisory_severity or "severity not available"
+        print(f"  {p.level} (score {p.score}) {f.key} in {f.dependency.name}=={f.dependency.version} [advisory: {label}]")
+        print("      " + "; ".join(p.reasons))
