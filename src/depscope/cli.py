@@ -3,7 +3,7 @@ import sys
 
 from depscope.comparator import compare, package_key
 from depscope.parser import parse_file
-from depscope.report import write_reports
+from depscope.report import write_compare_json, write_reports
 from depscope.prioritizer import print_priorities
 from depscope.remediation import print_recommendations
 from depscope.scanner import scan
@@ -48,7 +48,7 @@ def run_scan(path, json_path=None, csv_path=None):
     return 1 if errors else 0
 
 
-def run_compare(before_path, after_path):
+def run_compare(before_path, after_path, json_path=None):
     before_deps, before_issues = parse_file(before_path)
     after_deps, after_issues = parse_file(after_path)
     before_findings, before_errors = scan(before_deps)
@@ -105,6 +105,7 @@ def run_compare(before_path, after_path):
         for dependency, message in all_errors:
             print(f"  {dependency.name}=={dependency.version}: {message}")
 
+    write_compare_json(before_path, after_path, before_deps, after_deps, before_issues, after_issues, result, all_errors, json_path)
     return 1 if all_errors else 0
 
 
@@ -120,11 +121,12 @@ def main() -> int:
     compare_cmd = commands.add_parser("compare", help="compare two requirements files")
     compare_cmd.add_argument("before")
     compare_cmd.add_argument("after")
+    compare_cmd.add_argument("--json", help="write a JSON comparison report to this path")
 
     args = parser.parse_args()
     if args.command == "scan":
         return run_scan(args.requirements, args.json, args.csv)
-    return run_compare(args.before, args.after)
+    return run_compare(args.before, args.after, args.json)
 
 
 if __name__ == "__main__":

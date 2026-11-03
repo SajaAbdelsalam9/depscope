@@ -156,3 +156,112 @@ def write_reports(source, dependencies, issues, findings, errors, json_path=None
     if csv_path:
         write_csv(report, csv_path)
         print(f"CSV report written to {csv_path} (findings only)")
+
+
+COMPARE_LIMITATIONS = LIMITATIONS + (
+    "Packages whose OSV lookup failed in either snapshot are excluded from the comparison "
+    "and listed under not_compared. Their changes are unknown.",
+    "A finding that is new on an unchanged version may have been disclosed between the two "
+    "scans, or the earlier data may have been incomplete. DepScope cannot tell which.",
+)
+
+
+def _basic_finding(finding):
+    return {
+        "key": finding.key,
+        "all_ids": list(finding.ids),
+        "package": finding.dependency.name,
+        "installed_version": finding.dependency.version,
+        "summary": finding.summary,
+        "advisory_severity": finding.advisory_severity,
+        "cvss_vectors": list(finding.cvss_vectors),
+        "fixed_versions": list(finding.fixed_versions),
+    }
+
+
+def _ranked_entry(finding, is_new):
+    p = prioritize(finding, is_new=is_new)
+    entry = _basic_finding(finding)
+    entry["priority_level"] = p.level
+    entry["priority_score"] = p.score
+    entry["priority_reasons"] = list(p.reasons)
+    return entry
+
+
+def build_compare_report(
+    before_path, after_path, before_deps, after_deps,
+    before_issues, after_issues, result, errors, generated_at=None,
+):
+    new_ranked = [prioritize(c.finding, is_new=True) for c in result.new_findings]
+    reasons = {c.finding: c.reason for c in result.new_findings}
+    new_ranked.sort(key=lambda p: (-p.score, p.finding.dependency.name, p.finding.key))
+
+    new_entries = []
+    for p in new_ranked:
+        entry = _ranked_entry(p.finding, is_new=True)
+        entry["reason"] = reasons[p.finding]
+        new_entries.append(entry)
+
+    resolved_entries = []
+    for change in result.resolved_findings:
+        entry = _basic_finding(change.finding)
+        entry["reason"] = change.reason
+        resolved_entries.append(entry)
+
+    persistent = sorted(
+        result.persistent_findings,
+        key=lambda f: (-prioritize(f).score, f.dependency.name, f.key),
+    )
+
+    return {
+        "tool": {"name": "DepScope", "version": TOOL_VERSION},
+        "report_type": "comparison",
+        "generated_at": generated_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "before_file": before_path,
+        "after_file": after_path,
+        "summary": {
+            "dependencies_added": len(result.added),
+            "dependencies_removed": len(result.removed),
+            "dependencies_updated": len(result.updated),
+            "dependencies_unchanged": len(result.unchanged),
+            "new_vulnerabilities": len(result.new_findings),
+            "resolved_vulnerabilities": len(result.resolved_findings),
+            "persistent_vulnerabilities": len(result.persistent_findings),
+            "packages_not_compared": len(errors),
+        },
+        "dependency_changes": {
+            "added": [{"name": d.name, "version": d.version} for d in result.added],
+            "removed": [{"name": d.name, "version": d.version} for d in result.removed],
+            "updated": [
+                {"name": u.name, "before": u.before, "after": u.after} for u in result.updated
+            ],
+            "unchanged": [{"name": d.name, "version": d.version} for d in result.unchanged],
+        },
+        "new_vulnerabilities": new_entries,
+        "resolved_vulnerabilities": resolved_entries,
+        "persistent_vulnerabilities": [_ranked_entry(f, is_new=False) for f in persistent],
+        "not_compared": [
+            {"package": f"{d.name}=={d.version}", "error": message} for d, message in errors
+        ],
+        "unsupported_lines": [
+            {"snapshot": snapshot, "line": i.line_number, "text": i.text, "reason": i.reason}
+            for snapshot, issues in (("before", before_issues), ("after", after_issues))
+            for i in issues
+        ],
+        "priority_method": PRIORITY_METHOD,
+        "limitations": list(COMPARE_LIMITATIONS),
+    }
+
+
+def write_compare_json(
+    before_path, after_path, before_deps, after_deps,
+    before_issues, after_issues, result, errors, json_path=None,
+):
+    if not json_path:
+        return
+    report = build_compare_report(
+        before_path, after_path, before_deps, after_deps,
+        before_issues, after_issues, result, errors,
+    )
+    write_json(report, json_path)
+    print(f"\nJSON comparison report written to {json_path}")
