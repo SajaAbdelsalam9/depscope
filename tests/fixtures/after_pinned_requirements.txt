@@ -1,0 +1,4 @@
+requests==2.34.2
+flask==2.0.1
+jinja2==2.10
+urllib3==2.8.0
