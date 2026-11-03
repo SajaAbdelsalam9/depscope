@@ -3,6 +3,7 @@ import sys
 
 from depscope.comparator import compare, package_key
 from depscope.parser import parse_file
+from depscope.sbom import run_sbom
 from depscope.report import write_compare_html, write_compare_json, write_reports, write_scan_html
 from depscope.prioritizer import print_priorities
 from depscope.remediation import print_recommendations
@@ -126,10 +127,15 @@ def main() -> int:
     compare_cmd.add_argument("after")
     compare_cmd.add_argument("--json", help="write a JSON comparison report to this path")
     compare_cmd.add_argument("--html", help="write an HTML comparison report to this path")
+    sbom_cmd = commands.add_parser("sbom", help="generate a CycloneDX SBOM (JSON)")
+    sbom_cmd.add_argument("requirements")
+    sbom_cmd.add_argument("--output", required=True, help="where to write the SBOM JSON")
 
     args = parser.parse_args()
     if args.command == "scan":
         return run_scan(args.requirements, args.json, args.csv, args.html)
+    if args.command == "sbom":
+        return run_sbom(args.requirements, args.output)
     return run_compare(args.before, args.after, args.json, args.html)
 
 
