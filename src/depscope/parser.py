@@ -1,4 +1,9 @@
+import re
+
 from depscope.models import Dependency, ParseIssue
+
+NAME_PATTERN = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$")
+VERSION_PATTERN = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9._+!-]*[A-Za-z0-9])?$")
 
 
 def parse_line(line: str) -> Dependency | None:
@@ -8,14 +13,11 @@ def parse_line(line: str) -> Dependency | None:
     Returns None for blank lines and comments.
     Raises ValueError for lines we cannot support.
     """
-    # Remove any inline comment, then trim spaces and newlines
     cleaned = line.split("#")[0].strip()
 
-    # Nothing left means a blank line or a full-line comment
     if not cleaned:
         return None
 
-    # We only support exact pins like name==version
     if "==" not in cleaned:
         raise ValueError(f"Unsupported line (not an exact == pin): {line.strip()}")
 
@@ -28,6 +30,12 @@ def parse_line(line: str) -> Dependency | None:
 
     if not name or not version:
         raise ValueError(f"Missing package name or version: {line.strip()}")
+
+    if not NAME_PATTERN.fullmatch(name) or not VERSION_PATTERN.fullmatch(version):
+        raise ValueError(
+            "Unsupported name or version (extras, environment markers and options "
+            f"are not supported): {line.strip()}"
+        )
 
     return Dependency(name=name, version=version)
 
