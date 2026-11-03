@@ -3,7 +3,7 @@ import sys
 
 from depscope.comparator import compare, package_key
 from depscope.parser import parse_file
-from depscope.report import write_compare_json, write_reports
+from depscope.report import write_compare_html, write_compare_json, write_reports, write_scan_html
 from depscope.prioritizer import print_priorities
 from depscope.remediation import print_recommendations
 from depscope.scanner import scan
@@ -16,7 +16,7 @@ def describe(finding):
     return f"{finding.key} [{label}] in {dep.name}=={dep.version}, fix: {fix}\n      {finding.summary}"
 
 
-def run_scan(path, json_path=None, csv_path=None):
+def run_scan(path, json_path=None, csv_path=None, html_path=None):
     dependencies, issues = parse_file(path)
     findings, errors = scan(dependencies)
 
@@ -45,10 +45,11 @@ def run_scan(path, json_path=None, csv_path=None):
             print(f"  {dependency.name}=={dependency.version}: {message}")
 
     write_reports(path, dependencies, issues, findings, errors, json_path, csv_path)
+    write_scan_html(path, dependencies, issues, findings, errors, html_path)
     return 1 if errors else 0
 
 
-def run_compare(before_path, after_path, json_path=None):
+def run_compare(before_path, after_path, json_path=None, html_path=None):
     before_deps, before_issues = parse_file(before_path)
     after_deps, after_issues = parse_file(after_path)
     before_findings, before_errors = scan(before_deps)
@@ -106,6 +107,7 @@ def run_compare(before_path, after_path, json_path=None):
             print(f"  {dependency.name}=={dependency.version}: {message}")
 
     write_compare_json(before_path, after_path, before_deps, after_deps, before_issues, after_issues, result, all_errors, json_path)
+    write_compare_html(before_path, after_path, before_deps, after_deps, before_issues, after_issues, result, all_errors, html_path)
     return 1 if all_errors else 0
 
 
@@ -117,16 +119,18 @@ def main() -> int:
     scan_cmd.add_argument("requirements")
     scan_cmd.add_argument("--json", help="write a JSON report to this path")
     scan_cmd.add_argument("--csv", help="write a CSV report to this path")
+    scan_cmd.add_argument("--html", help="write an HTML report to this path")
 
     compare_cmd = commands.add_parser("compare", help="compare two requirements files")
     compare_cmd.add_argument("before")
     compare_cmd.add_argument("after")
     compare_cmd.add_argument("--json", help="write a JSON comparison report to this path")
+    compare_cmd.add_argument("--html", help="write an HTML comparison report to this path")
 
     args = parser.parse_args()
     if args.command == "scan":
-        return run_scan(args.requirements, args.json, args.csv)
-    return run_compare(args.before, args.after, args.json)
+        return run_scan(args.requirements, args.json, args.csv, args.html)
+    return run_compare(args.before, args.after, args.json, args.html)
 
 
 if __name__ == "__main__":

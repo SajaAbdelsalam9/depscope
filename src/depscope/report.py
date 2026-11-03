@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from depscope.prioritizer import prioritize
+from depscope.html_report import render_compare_html, render_scan_html, write_html
 from depscope.remediation import recommend
 
 TOOL_VERSION = "0.1.0"
@@ -265,3 +266,25 @@ def write_compare_json(
     )
     write_json(report, json_path)
     print(f"\nJSON comparison report written to {json_path}")
+
+
+def write_scan_html(source, dependencies, issues, findings, errors, html_path=None):
+    if not html_path:
+        return
+    report = build_report(source, dependencies, issues, findings, errors)
+    write_html(render_scan_html(report), html_path)
+    print(f"HTML report written to {html_path}")
+
+
+def write_compare_html(
+    before_path, after_path, before_deps, after_deps,
+    before_issues, after_issues, result, errors, html_path=None,
+):
+    if not html_path:
+        return
+    report = build_compare_report(
+        before_path, after_path, before_deps, after_deps,
+        before_issues, after_issues, result, errors,
+    )
+    write_html(render_compare_html(report), html_path)
+    print(f"HTML comparison report written to {html_path}")
