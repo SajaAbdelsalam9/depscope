@@ -3,6 +3,7 @@ import sys
 
 from depscope.comparator import compare, package_key
 from depscope.parser import parse_file
+from depscope.remediation import print_recommendations
 from depscope.scanner import scan
 
 
@@ -29,6 +30,7 @@ def run_scan(path):
             print(f"  - {f.key} [{label}] fix: {fix}")
             print(f"    {f.summary}")
 
+    print_recommendations(dependencies, findings)
     if issues:
         print("\nUnsupported lines (NOT analyzed):")
         for issue in issues:
