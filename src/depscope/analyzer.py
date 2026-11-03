@@ -1,4 +1,5 @@
 from depscope.models import Dependency, Finding, Vulnerability
+from depscope.version import sort_versions
 
 NO_SUMMARY = "(no summary provided)"
 
@@ -45,7 +46,7 @@ def merge_vulnerabilities(
                 summary=summary,
                 cvss_vectors=tuple(sorted({c for v in records for c in v.cvss_vectors})),
                 advisory_severity=severity,
-                fixed_versions=tuple(sorted({f for v in records for f in v.fixed_versions})),
+                fixed_versions=sort_versions({f for v in records for f in v.fixed_versions}),
             )
         )
 
